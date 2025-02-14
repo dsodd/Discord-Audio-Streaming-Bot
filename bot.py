@@ -20,10 +20,16 @@ bot = commands.Bot(command_prefix='/', intents=intents)
 async def on_ready():
     print(f'Bot is ready! Logged in as {bot.user.name}')
     try:
+        # Sync slash commands
+        print("Syncing slash commands...")
+        await bot.tree.sync()
+        print("Slash commands synced successfully")
+
+        # Load music cog
         await bot.load_extension('cogs.music')
         print("Music cog loaded successfully")
     except Exception as e:
-        print(f"Failed to load music cog: {e}")
+        print(f"Failed to initialize bot: {e}")
 
 @bot.event
 async def on_command_error(ctx, error):
