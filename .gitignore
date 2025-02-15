@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 cogs/__pycache__/
 utils/__pycache__/
 spotify_cache/*
@@ -5,3 +6,6 @@ spotify_cache/*
 .env
 .replit
 spotify_token.cache
+=======
+.env
+>>>>>>> 52ffcef (yuh)
