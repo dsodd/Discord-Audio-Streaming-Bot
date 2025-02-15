@@ -4,3 +4,4 @@ spotify_cache/*
 .env
 .env
 .replit
+spotify_token.cache
