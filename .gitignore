@@ -2,3 +2,5 @@ cogs/__pycache__/
 utils/__pycache__/
 spotify_cache/*
 .env
+.env
+.replit
