@@ -12,5 +12,10 @@ spotify_token.cache
 >>>>>>> 52ffcef (yuh)
 =======
 ffmpeg
+<<<<<<< HEAD
 .spotify_cache\spotify_token.cache
 >>>>>>> 84b6b34 (Some final fixes)
+=======
+.spotify_cache
+spotify_token.cache
+>>>>>>> ad6debc (Applying some fixes and changes related to how the code looks)
