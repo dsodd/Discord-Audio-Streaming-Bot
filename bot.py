@@ -3,6 +3,8 @@ import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 
+
+
 # Load environment variables
 load_dotenv()
 
@@ -45,4 +47,15 @@ if __name__ == "__main__":
     token = os.getenv('DISCORD_TOKEN')
     if not token:
         raise ValueError("No Discord token found in .env file")
+<<<<<<< HEAD
     bot.run(token)
+=======
+
+    print("[DEBUG] Starting bot with enhanced logging...")
+    bot.run(token)
+
+
+
+## Made by dsod
+## Discord: dsodd
+>>>>>>> 84b6b34 (Some final fixes)
