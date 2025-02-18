@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 cogs/__pycache__/
 utils/__pycache__/
 spotify_cache/*
@@ -19,3 +20,13 @@ ffmpeg
 .spotify_cache
 spotify_token.cache
 >>>>>>> ad6debc (Applying some fixes and changes related to how the code looks)
+=======
+venv/
+ffmpeg/
+.spotify_cache/
+.replit
+.pyproject.toml
+.replit.nix
+uv.lock
+.env
+>>>>>>> 0dcaccf (Update)

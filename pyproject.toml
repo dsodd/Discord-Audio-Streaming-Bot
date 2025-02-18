@@ -1,0 +1,14 @@
+[project]
+name = "discord-music-bot"
+version = "0.1.0"
+description = "Discord Music Bot with YouTube and Spotify support"
+requires-python = ">=3.11"
+dependencies = [
+    "discord-py>=2.4.0",
+    "ffmpeg-python>=0.2.0",
+    "pynacl>=1.5.0",
+    "python-dotenv>=1.0.1",
+    "requests>=2.32.3",
+    "spotipy>=2.25.0",
+    "yt-dlp>=2025.1.26",
+]
