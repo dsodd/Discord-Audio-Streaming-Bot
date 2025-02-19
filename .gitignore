@@ -22,6 +22,7 @@ spotify_token.cache
 >>>>>>> ad6debc (Applying some fixes and changes related to how the code looks)
 =======
 venv/
+<<<<<<< HEAD
 ffmpeg/
 .spotify_cache/
 .replit
@@ -30,3 +31,11 @@ ffmpeg/
 uv.lock
 .env
 >>>>>>> 0dcaccf (Update)
+=======
+spotify_token.cache
+.env
+.spotify_cache/spotify_token.cache
+/.spotify_cache
+/cogs/__pycache__
+cogs/__pycache__/music.cpython-311.pyc
+>>>>>>> 558aac1 (Copied test branch, confirmed working)
