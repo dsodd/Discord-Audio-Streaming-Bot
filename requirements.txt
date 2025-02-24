@@ -13,4 +13,8 @@ sendgrid
 sendgrid
 psutil
 lyricsgenius
+<<<<<<< HEAD
 >>>>>>> 0dcaccf (Update)
+=======
+slack_sdk
+>>>>>>> f43f3bb (Applying some come that is confirmed to b working)

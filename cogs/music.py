@@ -17,6 +17,22 @@ import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 from spotipy.cache_handler import CacheFileHandler
 
+class MusicError(Exception):
+    """Base exception class for music-related errors"""
+    pass
+
+class VoiceConnectionError(MusicError):
+    """Exception for voice connection issues"""
+    pass
+
+class AudioSourceError(MusicError):
+    """Exception for audio source creation issues"""
+    pass
+
+class QueueError(MusicError):
+    """Exception for queue-related issues"""
+    pass
+
 class SpotifyClient:
     def __init__(self):
         print("[DEBUG] Initializing SpotifyClient...")
@@ -46,7 +62,6 @@ class SpotifyClient:
         except Exception as e:
             print(f"[ERROR] Failed to initialize Spotify client: {str(e)}")
             raise
-
     def extract_spotify_id(self, url):
         """Extract Spotify ID from URL"""
         url = url.split('?')[0]  # Remove query parameters
@@ -115,28 +130,35 @@ class SpotifyClient:
                 error_count = 0
 
                 while results:
+                    print(f"[DEBUG] Processing playlist page with {len(results['items'])} items")
                     for item in results['items']:
                         try:
-                            if not item:
-                                print("[WARNING] Skipping null playlist item")
+                            if not item or not item.get('track'):
+                                print("[WARNING] Skipping invalid track item")
                                 continue
 
-                            if not item.get('track'):
-                                print("[WARNING] Skipping item with no track data")
+                            track = item['track']
+
+                            # Skip local files and null tracks
+                            if track.get('is_local', False) or not track.get('name'):
+                                print("[WARNING] Skipping local or invalid track")
                                 continue
 
-                            if item['track'].get('is_local', False):
-                                print("[WARNING] Skipping local track")
-                                continue
+                            # Create a more precise YouTube search query
+                            artists = [artist['name'] for artist in track['artists']]
+                            artist_names = ', '.join(artists)
+                            track_name = track['name']
 
-                            track_info = self._format_track_info(item['track'])
-                            if track_info:
-                                tracks.append(track_info)
-                                track_count += 1
-                                print(f"[DEBUG] Added track {track_count}: {track_info['title']}")
-                            else:
-                                error_count += 1
-                                print(f"[WARNING] Failed to format track {item['track'].get('name', 'Unknown')}")
+                            track_info = {
+                                'title': f"{track_name} - {artist_names}",
+                                'search_query': f"{track_name} {artist_names} official audio",
+                                'duration_ms': track['duration_ms'],
+                                'artists': artists
+                            }
+
+                            tracks.append(track_info)
+                            track_count += 1
+                            print(f"[DEBUG] Added track {track_count}: {track_info['title']}")
 
                         except Exception as track_error:
                             error_count += 1
@@ -154,12 +176,10 @@ class SpotifyClient:
                 if not tracks:
                     raise Exception("No playable tracks found in playlist")
 
-                print(f"[DEBUG] Retrieved {len(tracks)} tracks from playlist")
                 return tracks
 
             except spotipy.exceptions.SpotifyException as e:
                 print(f"[ERROR] Spotify API error: {str(e)}")
-                print(f"[ERROR] Error details: {e.__dict__}")
                 if e.http_status == 404:
                     raise Exception("Playlist not found or is not accessible")
                 raise Exception(f"Failed to access Spotify playlist: {str(e)}")
@@ -174,6 +194,7 @@ class SpotifyClient:
         try:
             print(f"[DEBUG] Getting album tracks for URL: {url}")
             album_id = self.extract_spotify_id(url)
+            print(f"[DEBUG] Extracted album ID: {album_id}")
 
             try:
                 album = self.sp.album(album_id)
@@ -182,36 +203,65 @@ class SpotifyClient:
 
                 print(f"[DEBUG] Found album: {album['name']}")
                 tracks = []
+                track_count = 0
+                error_count = 0
 
                 # Get all tracks using pagination
                 results = album['tracks']
                 while results:
+                    print(f"[DEBUG] Processing album page with {len(results['items'])} items")
                     for track in results['items']:
-                        if track and not track.get('is_local', False):
+                        try:
+                            if not track or track.get('is_local', False):
+                                print("[WARNING] Skipping invalid or local track")
+                                continue
+
+                            # Get full track info for better metadata
                             full_track = self.sp.track(track['id'])
-                            track_info = self._format_track_info(full_track)
-                            if track_info:
-                                tracks.append(track_info)
-                                print(f"[DEBUG] Added track: {track_info['title']}")
+
+                            # Create a more precise YouTube search query
+                            artists = [artist['name'] for artist in full_track['artists']]
+                            artist_names = ', '.join(artists)
+                            track_name = full_track['name']
+
+                            track_info = {
+                                'title': f"{track_name} - {artist_names}",
+                                'search_query': f"{track_name} {artist_names} official audio",
+                                'duration_ms': full_track['duration_ms'],
+                                'artists': artists
+                            }
+
+                            tracks.append(track_info)
+                            track_count += 1
+                            print(f"[DEBUG] Added track {track_count}: {track_info['title']}")
+
+                        except Exception as track_error:
+                            error_count += 1
+                            print(f"[WARNING] Error processing track: {str(track_error)}")
+                            continue
 
                     if results.get('next'):
+                        print("[DEBUG] Fetching next page of album tracks")
                         results = self.sp.next(results)
                     else:
                         break
 
+                print(f"[DEBUG] Album processing complete - Added: {track_count}, Errors: {error_count}")
+
                 if not tracks:
                     raise Exception("No playable tracks found in album")
 
-                print(f"[DEBUG] Retrieved {len(tracks)} tracks from album")
                 return tracks
 
             except spotipy.exceptions.SpotifyException as e:
+                print(f"[ERROR] Spotify API error: {str(e)}")
                 if e.http_status == 404:
-                    raise Exception("Album not found or is not available")
+                    raise Exception("Album not found or is not accessible")
                 raise Exception(f"Failed to access Spotify album: {str(e)}")
 
         except Exception as e:
             print(f"[ERROR] Failed to get album tracks: {str(e)}")
+            print(traceback.format_exc())
             raise
 
     def _format_track_info(self, track):
@@ -505,8 +555,11 @@ class QueueManager:
         return list(self.queue)
 
 
+<<<<<<< HEAD
 >>>>>>> 0dcaccf (Update)
 
+=======
+>>>>>>> f43f3bb (Applying some come that is confirmed to b working)
 class Music(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -564,9 +617,10 @@ class Music(commands.Cog):
         await self.play_impl(interaction, query)
 
     async def play_impl(self, ctx_or_interaction, query: str):
-        """Unified implementation for play command"""
+        """Unified implementation for play command with enhanced error handling"""
         is_interaction = isinstance(ctx_or_interaction, discord.Interaction)
 
+<<<<<<< HEAD
         if is_interaction:
             user = ctx_or_interaction.user
             guild = ctx_or_interaction.guild
@@ -591,12 +645,29 @@ class Music(commands.Cog):
             # Connect to voice channel if not already connected
             if not interaction.guild.voice_client:
 =======
+=======
+        try:
+            if is_interaction:
+                user = ctx_or_interaction.user
+                guild = ctx_or_interaction.guild
+                await ctx_or_interaction.response.defer()
+            else:
+                user = ctx_or_interaction.author
+                guild = ctx_or_interaction.guild
+
+            if not user.voice:
+                raise VoiceConnectionError("You need to be in a voice channel!")
+
+            queue_manager = self.get_queue_manager(guild.id)
+
+>>>>>>> f43f3bb (Applying some come that is confirmed to b working)
             # Handle voice channel connection
             if not guild.voice_client:
 >>>>>>> 0dcaccf (Update)
                 try:
                     await user.voice.channel.connect(timeout=20.0, self_deaf=True)
                 except Exception as e:
+<<<<<<< HEAD
 <<<<<<< HEAD
                     print(f"[ERROR] Failed to connect to voice channel: {str(e)}")
                     await interaction.followup.send("Failed to connect to voice channel. Please try again.")
@@ -615,20 +686,16 @@ class Music(commands.Cog):
                         await ctx_or_interaction.followup.send(embed=embed)
                     else:
                         await ctx_or_interaction.send(embed=embed)
+=======
+                    await self.handle_voice_state_error(ctx_or_interaction, e)
+>>>>>>> f43f3bb (Applying some come that is confirmed to b working)
                     return
 
-            # Create music source
+            # Create music source with error handling
             try:
                 music_source = await MusicSource.create_source(query)
             except Exception as e:
-                print(f"[ERROR] Failed to create music source: {str(e)}")
-                embed = self.create_embed("Error", 
-                    f"Could not process the music source: {str(e)}", 
-                    discord.Color.red())
-                if is_interaction:
-                    await ctx_or_interaction.followup.send(embed=embed)
-                else:
-                    await ctx_or_interaction.send(embed=embed)
+                await self.handle_music_source_error(ctx_or_interaction, e)
                 return
 >>>>>>> 0dcaccf (Update)
 
@@ -731,19 +798,32 @@ class Music(commands.Cog):
             if not guild.voice_client.is_playing():
                 await self.play_next(ctx_or_interaction)
 
+        except VoiceConnectionError as e:
+            await self.handle_voice_state_error(ctx_or_interaction, e)
+        except QueueError as e:
+            await self.handle_queue_error(ctx_or_interaction, e)
         except Exception as e:
-            print(f"[ERROR] Play command error: {str(e)}")
-            print(traceback.format_exc())
-            embed = self.create_embed("Error", f"An error occurred: {str(e)}", discord.Color.red())
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Unexpected error in play command: {str(e)}")
+            logger.error(traceback.format_exc())
+            error_message = f"An unexpected error occurred: {str(e)}"
+            embed = self.create_embed("Error", error_message, discord.Color.red())
+
             if is_interaction:
-                await ctx_or_interaction.followup.send(embed=embed)
+                if not ctx_or_interaction.response.is_done():
+                    await ctx_or_interaction.response.send_message(embed=embed)
+                else:
+                    await ctx_or_interaction.followup.send(embed=embed)
             else:
                 await ctx_or_interaction.send(embed=embed)
 
+
     @commands.command(name='queue', aliases=['q'])
     async def queue_command(self, ctx):
+        view = ButtonPause, ButtonSkip
         """Display the current queue (prefix command version)"""
-        await self.queue_impl(ctx)
+        await self.queue_impl(ctx, view=view)
 
     @app_commands.command(
         name='queue',
@@ -897,6 +977,8 @@ class Music(commands.Cog):
         else:
             await ctx_or_interaction.send(embed=embed)
 
+
+
     @commands.command(name='stop')
     async def stop_command(self, ctx):
         """Stop playback and clear the queue (prefix command version)"""
@@ -950,31 +1032,30 @@ class Music(commands.Cog):
         await self.help_impl(interaction)
 
     async def help_impl(self, ctx_or_interaction):
-            """Unified implementation for help command"""
-            is_interaction = isinstance(ctx_or_interaction, discord.Interaction)
+        """Unified implementation for help command"""
+        is_interaction = isinstance(ctx_or_interaction, discord.Interaction)
 
-            commands_list = [
-                "**/play <query>** or **!play <query>** or **!p <query>** - Play music from SoundCloud URL, YouTube URL, Spotify URL, or search query",
-                "**/queue** or **!queue** or **!q** - Display the current music queue",
-                "**/pause** or **!pause** - Pause/resume the current song",
-                "**/skip** or **!skip** or **!s**- Skip to the next song",
-                "**/skipqueue [count]** or **!skipqueue [count]** or **!sq [count]** - Skip specified number of songs in queue (default: 1)",
-                "**/stop** or **!stop** - Stop playback and clear the queue",
-                "**/help** or **!help** - Show all available commands"
-            ]
+        commands_list = [
+            "**/play <query>** or **!play <query>** or **!p <query>** - Play music from SoundCloud URL, YouTube URL, Spotify URL, or search query",
+            "**/queue** or **!queue** or **!q** - Display the current music queue",
+            "**/pause** or **!pause** - Pause/resume the current song",
+            "**/skip** or **!skip** or **!s**- Skip to the next song",
+            "**/skipqueue [count]** or **!skipqueue [count]** or **!sq [count]** - Skip specified number of songs in queue (default: 1)",
+            "**/stop** or **!stop** - Stop playback and clear the queue",
+            "**/help** or **!help** - Show all available commands"
+        ]
 
-            help_text = "Both prefix commands (! or /) and slash commands (/) are supported:\n\n"
-            help_text += "\n".join(f"- {cmd}" for cmd in commands_list)
+        help_text = "Both prefix commands (! or /) and slash commands (/) are supported:\n\n"
+        help_text += "\n".join(f"- {cmd}" for cmd in commands_list)
 
-            embed = self.create_embed(
-                "📋 Available Commands",
-                help_text
-            )
-            if is_interaction:
-                await ctx_or_interaction.response.send_message(embed=embed)
-            else:
-                await ctx_or_interaction.send(embed=embed)
-
+        embed = self.create_embed(
+            "📋 Available Commands",
+            help_text
+        )
+        if is_interaction:
+            await ctx_or_interaction.response.send_message(embed=embed)
+        else:
+            await ctx_or_interaction.send(embed=embed)
 
     @commands.command(name='skipqueue', aliases=['sq'])
     async def skipqueue_command(self, ctx, count: int = 1):
@@ -1131,6 +1212,137 @@ class Music(commands.Cog):
             self.queue_managers[guild_id] = QueueManager()
         return self.queue_managers[guild_id]
 >>>>>>> 0dcaccf (Update)
+
+    async def handle_voice_state_error(self, ctx_or_interaction, error):
+        """Handle voice state related errors"""
+        is_interaction = isinstance(ctx_or_interaction, discord.Interaction)
+        error_message = None
+
+        if isinstance(error, discord.ClientException):
+            if "already connected to a voice channel" in str(error):
+                error_message = "I'm already connected to a voice channel!"
+            elif "Not connected to voice" in str(error):
+                error_message = "I'm not connected to any voice channel!"
+        elif isinstance(error, discord.opus.OpusNotLoaded):
+            error_message = "Failed to load audio system. Please try again later."
+        elif isinstance(error, TimeoutError):
+            error_message = "Timed out while trying to connect to voice channel."
+        else:
+            error_message = f"Voice connection error: {str(error)}"
+
+        embed = self.create_embed("Error", error_message, discord.Color.red())
+
+        if is_interaction:
+            if not ctx_or_interaction.response.is_done():
+                await ctx_or_interaction.response.send_message(embed=embed)
+            else:
+                await ctx_or_interaction.followup.send(embed=embed)
+        else:
+            await ctx_or_interaction.send(embed=embed)
+
+    async def handle_music_source_error(self, ctx_or_interaction, error):
+        """Handle music source creation errors"""
+        is_interaction = isinstance(ctx_or_interaction, discord.Interaction)
+        error_message = None
+
+        if "age restricted" in str(error).lower():
+            error_message = "This video is age-restricted and cannot be played."
+        elif "not available in your country" in str(error).lower():
+            error_message = "This content is not available in the bot's region."
+        elif "private video" in str(error).lower():
+            error_message = "This video is private and cannot be accessed."
+        elif "sign in" in str(error).lower():
+            error_message = "This content requires authentication and cannot be played."
+        elif "no playable" in str(error).lower():
+            error_message = "No playable sources found for this content."
+        else:
+            error_message = f"Failed to process audio source: {str(error)}"
+
+        embed = self.create_embed("Error", error_message, discord.Color.red())
+
+        if is_interaction:
+            if not ctx_or_interaction.response.is_done():
+                await ctx_or_interaction.response.send_message(embed=embed)
+            else:
+                await ctx_or_interaction.followup.send(embed=embed)
+        else:
+            await ctx_or_interaction.send(embed=embed)
+
+    async def handle_queue_error(self, ctx_or_interaction, error):
+        """Handle queue-related errors"""
+        is_interaction = isinstance(ctx_or_interaction, discord.Interaction)
+        error_message = None
+
+        if isinstance(error, QueueError):
+            if "empty" in str(error).lower():
+                error_message = "The queue is empty!"
+            elif "invalid position" in str(error).lower():
+                error_message = "Invalid queue position specified!"
+            else:
+                error_message = str(error)
+        else:
+            error_message = f"Queue error: {str(error)}"
+
+        embed = self.create_embed("Error", error_message, discord.Color.red())
+
+        if is_interaction:
+            if not ctx_or_interaction.response.is_done():
+                await ctx_or_interaction.response.send_message(embed=embed)
+            else:
+                await ctx_or_interaction.followup.send(embed=embed)
+        else:
+            await ctx_or_interaction.send(embed=embed)
+
+    @commands.Cog.listener()
+    async def on_command_error(self, ctx, error):
+        """Handle music-specific command errors"""
+        try:
+            if isinstance(error, commands.CommandOnCooldown):
+                # Add rate limit protection
+                await ctx.send(f"This command is on cooldown. Try again in {error.retry_after:.2f} seconds.")
+            elif isinstance(error, commands.MaxConcurrencyReached):
+                await ctx.send("This command is already running! Please wait for it to finish.")
+            else:
+                # Let the global error handler handle other errors
+                await self.bot.on_command_error(ctx, error)
+        except Exception as e:
+            #print(f"Error in music error handler: {str(e)}")
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error in music error handler: {str(e)}")
+            logger.error(traceback.format_exc())
+
+    def cog_command_error(self, ctx, error):
+        """Handle music-specific slash command errors"""
+        try:
+            if isinstance(error, commands.CommandOnCooldown):
+                return ctx.send(f"This command is on cooldown. Try again in {error.retry_after:.2f} seconds.")
+            elif isinstance(error, commands.MaxConcurrencyReached):
+                return ctx.send("This command is already running! Please wait for it to finish.")
+            # Let the global error handler handle other errors
+            return self.bot.tree.on_error(ctx, error)
+        except Exception as e:
+            #print(f"Error in music slash command error handler: {str(e)}")
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error in music slash command error handler: {str(e)}")
+            logger.error(traceback.format_exc())
+
+class ButtonSkip(discord.ui.View):
+    def __init__(self):
+        super().__init__()
+
+    @discord.ui.button(label="Skip!", style=discord.ButtonStyle.primary, custom_id="buttonSkip")
+    async def button_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message("You clicked the button!", ephemeral=True)  # Only visible to the user
+
+class ButtonPause(discord.ui.View):
+    def __init__(self):
+        super().__init__()
+
+    @discord.ui.button(label="Pause!", style=discord.ButtonStyle.primary, custom_id="buttonPause")
+    async def button_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message("You clicked the button!", ephemeral=True)  # Only visible to the user
 
 async def setup(bot):
     await bot.add_cog(Music(bot))
