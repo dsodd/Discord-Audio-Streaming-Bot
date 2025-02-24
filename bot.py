@@ -62,7 +62,7 @@ async def on_ready():
         print("Music cog loaded successfully")
 =======
         # Log all registered commands before sync
-        logger.info("\nCurrently registered commands:")
+        logger.info("Currently registered commands:")
         for command in bot.tree.get_commands():
             logger.info(f"- /{command.name}")
 
@@ -82,11 +82,11 @@ async def on_ready():
             ),
             scopes=['bot', 'applications.commands']
         )
-        logger.info(f"\nInvite the bot using this link to ensure proper permissions:")
+        logger.info(f"Invite the bot using this link to ensure proper permissions:")
         logger.info(invite_link)
 
         # Sync slash commands globally with detailed logging
-        logger.info("\nStarting global command sync...")
+        logger.info("Starting global command sync...")
         try:
             existing_commands = await bot.tree.fetch_commands()
             logger.info(f"Found {len(existing_commands)} existing global commands")

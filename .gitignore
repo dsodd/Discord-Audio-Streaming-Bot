@@ -1,5 +1,6 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 cogs/__pycache__/
 utils/__pycache__/
 spotify_cache/*
@@ -32,10 +33,17 @@ uv.lock
 .env
 >>>>>>> 0dcaccf (Update)
 =======
+=======
+>>>>>>> d4c246e (Misc Changes)
 spotify_token.cache
 .env
-.spotify_cache/spotify_token.cache
 /.spotify_cache
 /cogs/__pycache__
 cogs/__pycache__/music.cpython-311.pyc
+<<<<<<< HEAD
 >>>>>>> 558aac1 (Copied test branch, confirmed working)
+=======
+logs/*.log
+.spotify_cache/spotify_token.cache
+logs/latest_log.log
+>>>>>>> d4c246e (Misc Changes)
