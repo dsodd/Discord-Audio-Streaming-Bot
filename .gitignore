@@ -1,6 +1,7 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 cogs/__pycache__/
 utils/__pycache__/
 spotify_cache/*
@@ -43,7 +44,9 @@ cogs/__pycache__/music.cpython-311.pyc
 <<<<<<< HEAD
 >>>>>>> 558aac1 (Copied test branch, confirmed working)
 =======
+=======
+.env
+>>>>>>> a9a90d1 (update .gitignore to remove unnecessary cache and log entries)
 logs/*.log
-.spotify_cache/spotify_token.cache
 logs/latest_log.log
 >>>>>>> d4c246e (Misc Changes)
