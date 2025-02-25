@@ -1,6 +1,0 @@
-2025-02-24 23:33:26,737 [INFO] Bot script started.
-2025-02-24 23:33:26,740 [INFO] Starting bot with enhanced error handling...
-2025-02-24 23:33:26,742 [INFO] logging in using static token
-2025-02-24 23:33:27,349 [INFO] Setting up bot hooks...
-2025-02-24 23:33:28,432 [INFO] Bot hooks setup complete
-2025-02-24 23:33:28,803 [INFO] Shard ID None has connected to Gateway (Session ID: df10e1f4b6d9cba90ec4bf4967971665).
