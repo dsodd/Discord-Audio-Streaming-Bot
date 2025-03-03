@@ -6,10 +6,7 @@ log_dir = 'logs'
 os.makedirs(log_dir, exist_ok=True)
 
 # Use a fixed log filename for logging within the 'logs' directory
-log_filename = os.path.join(log_dir, 'logs\latest_log.log')
-
-# Use a fixed log filename for logging
-log_filename = 'logs\latest_log.log'
+log_filename = os.path.join(log_dir, 'latest_log.log')
 
 # Create the logger
 logger = logging.getLogger()

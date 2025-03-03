@@ -14,7 +14,12 @@ sendgrid
 psutil
 lyricsgenius
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> 0dcaccf (Update)
 =======
 slack_sdk
 >>>>>>> f43f3bb (Applying some come that is confirmed to b working)
+=======
+slack_sdk
+twilio
+>>>>>>> efedcce (Testing branch merge)

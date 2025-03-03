@@ -9,6 +9,8 @@ Integrated streaming sources: Spotify Links, SoundCloud Links, Youtube/YT Music 
    - git clone <repository-url>
    - cd Discord-Music-Bot
    - pip install -r requirements.txt
+   - Recommended python version:
+      - Version 3.11
 
 2. **Install FFmpeg**
    - 🟦 Windows:
@@ -42,7 +44,7 @@ Integrated streaming sources: Spotify Links, SoundCloud Links, Youtube/YT Music 
 
 ## 📋 Available Commands
 
-Both prefix commands (! or /) and slash commands (/) are supported:
+Both prefix commands (!) and slash commands (/) are supported:
 
 - **/play <query>** or **!play <query>** or **!p <query>** - Play music from YouTube URL, Spotify URL, or search query
 - **/queue** or **!queue** or **!q** - Display the current music queue

@@ -22,7 +22,7 @@ def stop_bot():
                 continue  # Skip ourselves
 
             if cmdline:
-                logger.info(f"Checking process PID {pid}: {' '.join(cmdline)}")
+                #logger.info(f"Checking process PID {pid}: {' '.join(cmdline)}")
 
                 # Detect bot.py running as "python bot.py" or a direct script execution
                 if any(BOT_SCRIPT_NAME in arg for arg in cmdline):

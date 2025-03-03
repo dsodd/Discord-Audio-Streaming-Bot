@@ -48,5 +48,11 @@ cogs/__pycache__/music.cpython-311.pyc
 .env
 >>>>>>> a9a90d1 (update .gitignore to remove unnecessary cache and log entries)
 logs/*.log
+<<<<<<< HEAD
 logs/latest_log.log
 >>>>>>> d4c246e (Misc Changes)
+=======
+cogs/__pycache__/
+spotify_cache/
+__pycache__/
+>>>>>>> efedcce (Testing branch merge)

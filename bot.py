@@ -16,7 +16,26 @@ logger.info("Bot script started.")
 # Load environment variables
 load_dotenv()
 
+<<<<<<< HEAD
 # Bot configuration with all required intents
+=======
+# Get application ID
+APPLICATION_ID = os.getenv('APPLICATION_ID')
+if not APPLICATION_ID:
+    raise ValueError("No APPLICATION_ID found in .env file")
+
+# Add debug logging for token
+token = os.getenv('DISCORD_TOKEN')
+if token:
+    logger.info("Discord token loaded successfully")
+    # Log a masked version of the token for verification (showing only first 10 chars)
+    logger.info(f"Token starts with: {token[:10]}...")
+else:
+    logger.error("No Discord token found in .env file")
+    raise ValueError("No Discord token found in .env file")
+
+# Bot configuration with all required intents and permissions
+>>>>>>> efedcce (Testing branch merge)
 intents = discord.Intents.default()
 intents.message_content = True
 intents.voice_states = True

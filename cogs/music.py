@@ -4,13 +4,15 @@ from discord.ext import commands
 import asyncio
 import traceback
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 import random
+=======
+>>>>>>> efedcce (Testing branch merge)
 import os
 from collections import deque
 import yt_dlp
 import re
-import urllib.parse
 import requests
 import subprocess
 import spotipy
@@ -43,7 +45,7 @@ class SpotifyClient:
             raise ValueError("Spotify credentials not found in environment variables")
 
         try:
-            cache_dir = os.path.join(os.getcwd(), '.spotify_cache')
+            cache_dir = os.path.join(os.getcwd(), 'spotify_cache')
             os.makedirs(cache_dir, exist_ok=True)
 
             cache_path = os.path.join(cache_dir, 'spotify_token.cache')
@@ -421,17 +423,26 @@ class MusicSource:
         """Create a YouTube source from a query"""
         max_retries = 3
         current_retry = 0
+        backoff_delay = 1
 
         while current_retry < max_retries:
             try:
                 cookie_opts = {
                     'cookiefile': None,
                     'nocheckcertificate': True,
-                    'age_limit': None
+                    'age_limit': None,
+                    'socket_timeout': 30,  # Increased timeout
+                    'retries': 10,  # More retries for transient failures
                 }
                 ydl_opts.update(cookie_opts)
 
                 print(f"[DEBUG] Extracting info with yt-dlp for: {query} (Attempt {current_retry + 1}/{max_retries})")
+
+                # Add delay between retries with exponential backoff
+                if current_retry > 0:
+                    await asyncio.sleep(backoff_delay)
+                    backoff_delay *= 2
+
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     try:
                         info = ydl.extract_info(query, download=False)
@@ -448,7 +459,8 @@ class MusicSource:
                             for entry in info['entries']:
                                 try:
                                     if entry and entry.get('url'):
-                                        test_response = requests.head(entry['url'], timeout=5)
+                                        # Test URL availability with increased timeout
+                                        test_response = requests.head(entry['url'], timeout=10)
                                         if test_response.status_code == 200:
                                             valid_entry = entry
                                             break
@@ -496,6 +508,8 @@ class MusicSource:
                     print(traceback.format_exc())
                     raise Exception(f"Failed to process video after {max_retries} attempts: {str(e)}")
 
+        raise Exception("Failed to create YouTube source after maximum retries")
+
     async def get_audio(self):
         """Get the audio source for discord.py"""
         try:
@@ -529,6 +543,7 @@ class QueueManager:
     def __init__(self):
         self.queue = deque()
         self.current = None
+        self.loop_mode = "off"  # Can be "off", "song", or "queue"
 
     def add(self, item):
         """Add an item to the queue"""
@@ -536,23 +551,132 @@ class QueueManager:
 
     def get_next(self):
         """Get the next item from the queue"""
-        if not self.is_empty():
+        if self.loop_mode == "song" and self.current:
+            # If song loop is enabled, keep playing the current song
+            return self.current
+        elif not self.is_empty():
+            if self.loop_mode == "queue" and self.current:
+                # Add current song back to queue before getting next
+                self.queue.append(self.current)
             self.current = self.queue.popleft()
             return self.current
-        return None
+        else:
+            # Clear current song when no more songs in queue
+            self.current = None
+            return None
 
     def clear(self):
         """Clear the queue"""
         self.queue.clear()
         self.current = None
+        self.loop_mode = "off"
 
     def is_empty(self):
         """Check if the queue is empty"""
-        return len(self.queue) == 0
+        # Consider queue not empty if we're looping the current song
+        return len(self.queue) == 0 and (self.current is None or self.loop_mode == "off")
 
     def get_queue(self):
         """Get the current queue as a list"""
-        return list(self.queue)
+        queue_list = list(self.queue)
+        if self.current and self.loop_mode == "queue":
+            # Show current song at the end of queue when queue loop is enabled
+            queue_list.append(self.current)
+        return queue_list
+
+    def toggle_loop(self):
+        """Toggle between loop modes"""
+        if self.loop_mode == "off":
+            self.loop_mode = "song"
+        elif self.loop_mode == "song":
+            self.loop_mode = "queue"
+            # When switching to queue mode, add current song to queue
+            if self.current:
+                self.queue.append(self.current)
+        else:  # mode is "queue"
+            # When disabling loop, remove any duplicates of current song from queue
+            if self.current:
+                self.queue = deque([song for song in self.queue if song != self.current])
+            self.loop_mode = "off"
+        return self.loop_mode
+
+    def get_queue_info(self):
+        """Get information about the current queue state"""
+        output = ""
+
+        if self.current:
+            output += "🎵 Now Playing: \n"
+            output += f"{self.current.title}\n"
+
+            queue_list = self.get_queue()
+            if queue_list:
+                output += "\n⏭️ Upcoming Songs:\n"
+                output += "\n".join(f"{i+1}. {song.title}" for i, song in enumerate(queue_list))
+            elif self.loop_mode == "song":
+                output += "\n(Single song loop enabled)"
+            elif self.loop_mode == "queue":
+                output += "\n(Queue loop enabled)"
+        else:
+            output = "No songs are currently playing!"
+
+        if self.loop_mode != "off":
+            output += f"\n\n🔄 Loop Mode: **{self.loop_mode.capitalize()}**"
+
+        return output
+
+class MusicControlButtons(discord.ui.View):
+    def __init__(self, bot):
+        super().__init__(timeout=60)  # Buttons valid for 60 seconds
+        self.bot = bot
+
+    @discord.ui.button(label="⏭️ Skip", style=discord.ButtonStyle.secondary, custom_id="skip")
+    async def skip_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        guild = interaction.guild
+        if not guild.voice_client or not guild.voice_client.is_playing():
+            await interaction.response.send_message("Nothing is playing to skip!", ephemeral=True)
+            return
+
+        guild.voice_client.stop()
+        await interaction.response.send_message("⏭️ Skipped to next song", ephemeral=True)
+
+    @discord.ui.button(label="⏯️ Pause/Resume", style=discord.ButtonStyle.secondary, custom_id="pause")
+    async def pause_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        guild = interaction.guild
+        if not guild.voice_client:
+            await interaction.response.send_message("Not connected to a voice channel!", ephemeral=True)
+            return
+
+        if guild.voice_client.is_playing():
+            guild.voice_client.pause()
+            await interaction.response.send_message("⏸️ Paused the music", ephemeral=True)
+        elif guild.voice_client.is_paused():
+            guild.voice_client.resume()
+            await interaction.response.send_message("▶️ Resumed the music", ephemeral=True)
+        else:
+            await interaction.response.send_message("Nothing is playing!", ephemeral=True)
+
+    @discord.ui.button(label="🔄 Loop", style=discord.ButtonStyle.secondary, custom_id="loop")
+    async def loop_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        guild = interaction.guild
+        if not hasattr(self.bot, 'get_cog'):
+            await interaction.response.send_message("Bot cog not available!", ephemeral=True)
+            return
+
+        music_cog = self.bot.get_cog('Music')
+        if not music_cog:
+            await interaction.response.send_message("Music system not available!", ephemeral=True)
+            return
+
+        queue_manager = music_cog.get_queue_manager(guild.id)
+        new_mode = queue_manager.toggle_loop()
+
+        mode_messages = {
+            "off": "❌ Loop disabled",
+            "song": "🔂 Now looping current song",
+            "queue": "🔁 Now looping entire queue"
+        }
+
+        await interaction.response.send_message(mode_messages[new_mode], ephemeral=True)
 
 
 <<<<<<< HEAD
@@ -570,6 +694,7 @@ class Music(commands.Cog):
         print("[DEBUG] Music cog initialized")
 >>>>>>> 0dcaccf (Update)
 
+<<<<<<< HEAD
         # Register slash commands
         self.bot.tree.add_command(app_commands.Command(
             name='play',
@@ -591,6 +716,18 @@ class Music(commands.Cog):
             description='Stop playback and clear the queue',
             callback=self.stop
         ))
+=======
+    def create_embed(self, title, description, color=None):
+        if color is None:
+            color = discord.Color.from_rgb(205, 111, 251)  # #cd6ffb
+        embed = discord.Embed(
+            title=title,
+            description=description,
+            color=color
+        )
+        embed.set_footer(text="Discord Music Bot")
+        return embed
+>>>>>>> efedcce (Testing branch merge)
 
     def get_queue_manager(self, guild_id):
         if guild_id not in self.queue_managers:
@@ -660,13 +797,23 @@ class Music(commands.Cog):
 
             queue_manager = self.get_queue_manager(guild.id)
 
+<<<<<<< HEAD
 >>>>>>> f43f3bb (Applying some come that is confirmed to b working)
             # Handle voice channel connection
             if not guild.voice_client:
 >>>>>>> 0dcaccf (Update)
+=======
+            # Handle voice channel connection with retry
+            max_retries = 3
+            retry_count = 0
+            while retry_count < max_retries:
+>>>>>>> efedcce (Testing branch merge)
                 try:
-                    await user.voice.channel.connect(timeout=20.0, self_deaf=True)
+                    if not guild.voice_client:
+                        await user.voice.channel.connect(timeout=20.0, self_deaf=True)
+                    break
                 except Exception as e:
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
                     print(f"[ERROR] Failed to connect to voice channel: {str(e)}")
@@ -690,11 +837,19 @@ class Music(commands.Cog):
                     await self.handle_voice_state_error(ctx_or_interaction, e)
 >>>>>>> f43f3bb (Applying some come that is confirmed to b working)
                     return
+=======
+                    retry_count += 1
+                    if retry_count >= max_retries:
+                        await self.handle_voice_state_error(ctx_or_interaction, e)
+                        return
+                    await asyncio.sleep(1)
+>>>>>>> efedcce (Testing branch merge)
 
-            # Create music source with error handling
+            # Create music source with better error handling for playlists
             try:
                 music_source = await MusicSource.create_source(query)
             except Exception as e:
+                print(f"[ERROR] Failed to create music source: {str(e)}")
                 await self.handle_music_source_error(ctx_or_interaction, e)
                 return
 >>>>>>> 0dcaccf (Update)
@@ -703,6 +858,7 @@ class Music(commands.Cog):
             queue_manager.add(music_source)
             await interaction.followup.send(f"Added to queue: {music_source.title}")
 
+<<<<<<< HEAD
 <<<<<<< HEAD
             # Start playing if not already playing
             if not interaction.guild.voice_client.is_playing():
@@ -763,19 +919,33 @@ class Music(commands.Cog):
             await interaction.response.send_message("Queue is empty!")
 =======
             # Handle playlist/album tracks
+=======
+            # Handle playlist/album tracks with chunking
+>>>>>>> efedcce (Testing branch merge)
             remaining_tracks = getattr(music_source, 'remaining_tracks', None)
             if remaining_tracks:
                 successful_additions = 0
                 failed_additions = 0
+                chunk_size = 5  # Process 5 tracks at a time
 
-                for track_info in remaining_tracks:
-                    try:
-                        additional_source = await MusicSource.create_source(track_info['search_query'])
-                        queue_manager.add(additional_source)
-                        successful_additions += 1
-                    except Exception as e:
-                        print(f"[ERROR] Failed to process track: {str(e)}")
-                        failed_additions += 1
+                # Process tracks in chunks to avoid timeouts
+                for i in range(0, len(remaining_tracks), chunk_size):
+                    chunk = remaining_tracks[i:i + chunk_size]
+
+                    for track_info in chunk:
+                        try:
+                            # Add delay between track processing to avoid rate limits
+                            await asyncio.sleep(0.5)
+                            additional_source = await MusicSource.create_source(track_info['search_query'])
+                            queue_manager.add(additional_source)
+                            successful_additions += 1
+                        except Exception as e:
+                            print(f"[ERROR] Failed to process track: {str(e)}")
+                            failed_additions += 1
+                            continue
+
+                    # Give voice client time to handle current operations
+                    await asyncio.sleep(1)
 
                 total_tracks = successful_additions + 1  # +1 for the first track
                 status_message = f"🎵 Added {total_tracks} tracks to the queue"
@@ -808,26 +978,23 @@ class Music(commands.Cog):
             logger.error(f"Unexpected error in play command: {str(e)}")
             logger.error(traceback.format_exc())
             error_message = f"An unexpected error occurred: {str(e)}"
-            embed = self.create_embed("Error", error_message, discord.Color.red())
 
             if is_interaction:
                 if not ctx_or_interaction.response.is_done():
-                    await ctx_or_interaction.response.send_message(embed=embed)
+                    await ctx_or_interaction.response.send_message(error_message, ephemeral=True)
                 else:
-                    await ctx_or_interaction.followup.send(embed=embed)
+                    await ctx_or_interaction.followup.send(error_message, ephemeral=True)
             else:
-                await ctx_or_interaction.send(embed=embed)
-
+                await ctx_or_interaction.send(error_message)
 
     @commands.command(name='queue', aliases=['q'])
     async def queue_command(self, ctx):
-        view = ButtonPause, ButtonSkip
         """Display the current queue (prefix command version)"""
-        await self.queue_impl(ctx, view=view)
+        await self.queue_impl(ctx)
 
     @app_commands.command(
         name='queue',
-        description='Display the current queue'
+        description='Display the current queue and song information'
     )
     async def queue_slash(self, interaction: discord.Interaction):
         """Display the current queue (slash command version)"""
@@ -836,11 +1003,13 @@ class Music(commands.Cog):
     async def queue_impl(self, ctx_or_interaction):
         """Unified implementation for queue command"""
         is_interaction = isinstance(ctx_or_interaction, discord.Interaction)
-        guild_id = ctx_or_interaction.guild_id if is_interaction else ctx_or_interaction.guild.id
+        if is_interaction:
+            guild_id = ctx_or_interaction.guild_id
+        else:
+            guild_id = ctx_or_interaction.guild.id
 
-        queue_manager = self.get_queue_manager(guild_id)
-        if queue_manager.is_empty():
-            embed = self.create_embed("Queue", "Queue is empty!", discord.Color.blue())
+        if not guild_id:
+            embed = self.create_embed("Error", "Not in a guild!", discord.Color.red())
             if is_interaction:
                 await ctx_or_interaction.response.send_message(embed=embed)
             else:
@@ -848,6 +1017,7 @@ class Music(commands.Cog):
 >>>>>>> 0dcaccf (Update)
             return
 
+<<<<<<< HEAD
         queue_list = queue_manager.get_queue()
         queue_text = "\n".join(
             f"{i+1}. {song.title}" for i, song in enumerate(queue_list)
@@ -876,10 +1046,33 @@ class Music(commands.Cog):
             await interaction.response.send_message("Not connected to a voice channel!")
 =======
         embed = self.create_embed("Current Queue", queue_text)
+=======
+        guild = ctx_or_interaction.guild
+        if not guild.voice_client:
+            embed = self.create_embed("Error", "Not connected to a voice channel!", discord.Color.red())
+            if is_interaction:
+                await ctx_or_interaction.response.send_message(embed=embed)
+            else:
+                await ctx_or_interaction.send(embed=embed)
+            return
+
+        queue_manager = self.get_queue_manager(guild_id)
+        queue_info = queue_manager.get_queue_info()
+
+        # Define our theme color
+        theme_color = discord.Color.from_rgb(205, 111, 251)  # #cd6ffb
+
+        # Create embed with our theme color
+        embed = self.create_embed("Current Queue", queue_info, theme_color)
+
+        # Create view with music control buttons
+        view = MusicControlButtons(self.bot)
+
+>>>>>>> efedcce (Testing branch merge)
         if is_interaction:
-            await ctx_or_interaction.response.send_message(embed=embed)
+            await ctx_or_interaction.response.send_message(embed=embed, view=view)
         else:
-            await ctx_or_interaction.send(embed=embed)
+            await ctx_or_interaction.send(embed=embed, view=view)
 
     @commands.command(name='pause')
     async def pause_command(self, ctx):
@@ -929,7 +1122,7 @@ class Music(commands.Cog):
 
     @commands.command(name='skip', aliases=['s'])
     async def skip_command(self, ctx):
-        """Skip the current song (prefix command version)"""
+        """Skip to the next song (prefix command version)"""
         await self.skip_impl(ctx)
 
     @app_commands.command(
@@ -937,7 +1130,7 @@ class Music(commands.Cog):
         description='Skip the current song and play the next one'
     )
     async def skip_slash(self, interaction: discord.Interaction):
-        """Skip the current song (slash command version)"""
+        """Skip to the next song (slash command version)"""
         await self.skip_impl(interaction)
 
     async def skip_impl(self, ctx_or_interaction):
@@ -952,31 +1145,12 @@ class Music(commands.Cog):
                 await ctx_or_interaction.send(embed=embed)
             return
 
-        queue_manager = self.get_queue_manager(guild.id)
-        if not guild.voice_client.is_playing():
-            embed = self.create_embed("Error", "Nothing is currently playing!", discord.Color.red())
-            if is_interaction:
-                await ctx_or_interaction.response.send_message(embed=embed)
-            else:
-                await ctx_or_interaction.send(embed=embed)
-            return
-
-        if queue_manager.is_empty():
-            embed = self.create_embed("Queue Empty", "No more songs in the queue!", discord.Color.blue())
-            guild.voice_client.stop()
-            if is_interaction:
-                await ctx_or_interaction.response.send_message(embed=embed)
-            else:
-                await ctx_or_interaction.send(embed=embed)
-            return
-
         guild.voice_client.stop()
         embed = self.create_embed("Skipped", "⏭️ Skipped to the next song!")
         if is_interaction:
             await ctx_or_interaction.response.send_message(embed=embed)
         else:
             await ctx_or_interaction.send(embed=embed)
-
 
 
     @commands.command(name='stop')
@@ -989,7 +1163,7 @@ class Music(commands.Cog):
         description='Stop playback and clear the queue'
     )
     async def stop_slash(self, interaction: discord.Interaction):
-        """Stop playback and clear the queue (slash command version)"""
+        """Stop playback and clear the queue(slash command version)"""
         await self.stop_impl(interaction)
 
     async def stop_impl(self, ctx_or_interaction):
@@ -1008,13 +1182,21 @@ class Music(commands.Cog):
         queue_manager = self.get_queue_manager(guild.id)
         queue_manager.clear()
 <<<<<<< HEAD
+<<<<<<< HEAD
         interaction.guild.voice_client.stop()
         await interaction.guild.voice_client.disconnect()
         await interaction.response.send_message("Stopped playback and cleared queue")
 =======
         guild.voice_client.stop()
+=======
+
+        if guild.voice_client.is_playing():
+            guild.voice_client.stop()
+
+>>>>>>> efedcce (Testing branch merge)
         await guild.voice_client.disconnect()
-        embed = self.create_embed("Stopped", "⏹️ Stopped playback and cleared queue")
+
+        embed = self.create_embed("Stopped", "⏹️ Playback stopped and queue cleared!")
         if is_interaction:
             await ctx_or_interaction.response.send_message(embed=embed)
         else:
@@ -1042,10 +1224,11 @@ class Music(commands.Cog):
             "**/skip** or **!skip** or **!s**- Skip to the next song",
             "**/skipqueue [count]** or **!skipqueue [count]** or **!sq [count]** - Skip specified number of songs in queue (default: 1)",
             "**/stop** or **!stop** - Stop playback and clear the queue",
-            "**/help** or **!help** - Show all available commands"
+            "**/help** or **!help** - Show all available commands",
+            "**/loop** or **!loop** or **!l** - Toggle loop mode (off/song/queue)"
         ]
 
-        help_text = "Both prefix commands (! or /) and slash commands (/) are supported:\n\n"
+        help_text = "Both prefix commands (!) and slash commands (/) are supported:\n\n"
         help_text += "\n".join(f"- {cmd}" for cmd in commands_list)
 
         embed = self.create_embed(
@@ -1131,7 +1314,7 @@ class Music(commands.Cog):
         queue_manager = self.get_queue_manager(guild.id)
 
         if queue_manager.is_empty():
-            embed = self.create_embed("Queue Empty", "Queue is empty!", discord.Color.blue())
+            embed = self.create_embed("Queue Empty", "Queue is empty!", embed = self.create_embed("Queue Empty", "Queue is empty!", discord.Color.from_rgb(205, 111, 251)))
             if is_interaction:
                 await ctx_or_interaction.followup.send(embed=embed)
             else:
@@ -1214,31 +1397,42 @@ class Music(commands.Cog):
 >>>>>>> 0dcaccf (Update)
 
     async def handle_voice_state_error(self, ctx_or_interaction, error):
-        """Handle voice state related errors"""
+        """Handle voice state errors with better feedback"""
         is_interaction = isinstance(ctx_or_interaction, discord.Interaction)
-        error_message = None
+        error_message = str(error)
 
-        if isinstance(error, discord.ClientException):
-            if "already connected to a voice channel" in str(error):
-                error_message = "I'm already connected to a voice channel!"
-            elif "Not connected to voice" in str(error):
-                error_message = "I'm not connected to any voice channel!"
-        elif isinstance(error, discord.opus.OpusNotLoaded):
-            error_message = "Failed to load audio system. Please try again later."
-        elif isinstance(error, TimeoutError):
-            error_message = "Timed out while trying to connect to voice channel."
+        if "voice heartbeat blocked" in error_message.lower():
+            error_message = "Voice connection timed out. Please try again."
+        elif "connection reset" in error_message.lower():
+            error_message = "Lost connection to voice channel. Please try again."
         else:
-            error_message = f"Voice connection error: {str(error)}"
+            error_message = "Failed to join voice channel. Please make sure I have the correct permissions."
 
-        embed = self.create_embed("Error", error_message, discord.Color.red())
+        embed = self.create_embed("Voice Error", error_message, discord.Color.red())
 
-        if is_interaction:
-            if not ctx_or_interaction.response.is_done():
-                await ctx_or_interaction.response.send_message(embed=embed)
+        try:
+            if is_interaction:
+                if not ctx_or_interaction.response.is_done():
+                    await ctx_or_interaction.response.send_message(embed=embed)
+                else:
+                    await ctx_or_interaction.followup.send(embed=embed)
             else:
-                await ctx_or_interaction.followup.send(embed=embed)
-        else:
-            await ctx_or_interaction.send(embed=embed)
+                await ctx_or_interaction.send(embed=embed)
+        except Exception as e:
+            print(f"[ERROR] Failed to send voice error message: {str(e)}")
+
+        # Try to clean up voice client state
+        try:
+            guild = ctx_or_interaction.guild
+            if guild.voice_client:
+                await guild.voice_client.disconnect(force=True)
+        except Exception as cleanup_error:
+            print(f"[ERROR] Failed to cleanup voice client: {str(cleanup_error)}")
+
+        # Clear queue for this guild
+        guild_id = ctx_or_interaction.guild_id if is_interaction else ctx_or_interaction.guild.id
+        if guild_id in self.queue_managers:
+            self.queue_managers[guild_id].clear()
 
     async def handle_music_source_error(self, ctx_or_interaction, error):
         """Handle music source creation errors"""
@@ -1328,21 +1522,51 @@ class Music(commands.Cog):
             logger.error(f"Error in music slash command error handler: {str(e)}")
             logger.error(traceback.format_exc())
 
-class ButtonSkip(discord.ui.View):
-    def __init__(self):
-        super().__init__()
+    @commands.command(name='loop', aliases=['l'])
+    async def loop_command(self, ctx):
+        """Toggle between loop modes (off/song/queue)"""
+        await self.loop_impl(ctx)
 
-    @discord.ui.button(label="Skip!", style=discord.ButtonStyle.primary, custom_id="buttonSkip")
-    async def button_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("You clicked the button!", ephemeral=True)  # Only visible to the user
+    @app_commands.command(
+        name='loop',
+        description='Toggle between loop modes (off/song/queue)'
+    )
+    async def loop_slash(self, interaction: discord.Interaction):
+        """Toggle between loop modes"""
+        await self.loop_impl(interaction)
 
-class ButtonPause(discord.ui.View):
-    def __init__(self):
-        super().__init__()
+    async def loop_impl(self, ctx_or_interaction):
+        """Unified implementation for loop command"""
+        is_interaction = isinstance(ctx_or_interaction, discord.Interaction)
+        guild = ctx_or_interaction.guild if is_interaction else ctx_or_interaction.guild
 
-    @discord.ui.button(label="Pause!", style=discord.ButtonStyle.primary, custom_id="buttonPause")
-    async def button_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_message("You clicked the button!", ephemeral=True)  # Only visible to the user
+        if not guild.voice_client:
+            embed = self.create_embed("Error", "Not connected to a voice channel!")
+            if is_interaction:
+                await ctx_or_interaction.response.send_message(embed=embed)
+            else:
+                await ctx_or_interaction.send(embed=embed)
+            return
+
+        queue_manager = self.get_queue_manager(guild.id)
+        new_mode = queue_manager.toggle_loop()
+
+        mode_emoji = {
+            "off": "❌",
+            "song": "🔂",
+            "queue": "🔁"
+        }
+
+        embed = self.create_embed(
+            "Loop Mode Changed",
+            f"{mode_emoji[new_mode]} Loop mode set to: **{new_mode}**"
+        )
+
+        if is_interaction:
+            await ctx_or_interaction.response.send_message(embed=embed)
+        else:
+            await ctx_or_interaction.send(embed=embed)
+
 
 async def setup(bot):
     await bot.add_cog(Music(bot))
