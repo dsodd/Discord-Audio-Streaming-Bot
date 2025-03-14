@@ -218,6 +218,7 @@ if __name__ == "__main__":
 =======
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     print("[DEBUG] Starting bot with enhanced logging...")
 <<<<<<< HEAD
     bot.run(token)
@@ -232,6 +233,8 @@ if __name__ == "__main__":
 >>>>>>> 0dcaccf (Update)
 =======
     logger.info("Starting bot with enhanced error handling...")
+=======
+>>>>>>> 523edc9 (yes)
     try:
         bot.run(token)
     except discord.errors.LoginFailure:
