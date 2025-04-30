@@ -2,28 +2,14 @@ import os
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
-<<<<<<< HEAD
-=======
 import traceback
 import asyncio
 from logger_config import logger
 
 logger.info("Bot script started.")
 
-<<<<<<< HEAD
->>>>>>> f43f3bb (Applying some come that is confirmed to b working)
-
-# Load environment variables
 load_dotenv()
 
-<<<<<<< HEAD
-# Bot configuration with all required intents
-=======
-# Get application ID
-=======
-load_dotenv()
-
->>>>>>> f27ae09 (Cleaned up some code)
 APPLICATION_ID = os.getenv('APPLICATION_ID')
 if not APPLICATION_ID:
     raise ValueError("No APPLICATION_ID found in .env file")
@@ -36,21 +22,12 @@ else:
     logger.error("No Discord token found in .env file")
     raise ValueError("No Discord token found in .env file")
 
-<<<<<<< HEAD
-# Bot configuration with all required intents and permissions
->>>>>>> efedcce (Testing branch merge)
-=======
->>>>>>> f27ae09 (Cleaned up some code)
 intents = discord.Intents.default()
 intents.message_content = True
 intents.voice_states = True
 intents.guilds = True
 intents.members = True
-intents.presences = True
 
-<<<<<<< HEAD
-bot = commands.Bot(command_prefix='/', intents=intents)
-=======
 class MusicBot(commands.Bot):
     async def setup_hook(self):
         logger.info("Setting up bot hooks...")
@@ -68,26 +45,11 @@ bot = MusicBot(
     application_id=APPLICATION_ID,
     help_command=None
 )
->>>>>>> 0dcaccf (Update)
 
 @bot.event
 async def on_ready():
     logger.info(f'Bot is ready! Logged in as {bot.user.name}')
     try:
-<<<<<<< HEAD
-<<<<<<< HEAD
-        # Sync slash commands
-        print("Syncing slash commands...")
-        await bot.tree.sync()
-        print("Slash commands synced successfully")
-
-        # Load music cog
-        await bot.load_extension('cogs.music')
-        print("Music cog loaded successfully")
-=======
-        # Log all registered commands before sync
-=======
->>>>>>> f27ae09 (Cleaned up some code)
         logger.info("Currently registered commands:")
         for command in bot.tree.get_commands():
             logger.info(f"- /{command.name}")
@@ -137,22 +99,7 @@ async def on_ready():
             logger.error(traceback.format_exc())
             raise e
 
->>>>>>> 0dcaccf (Update)
     except Exception as e:
-<<<<<<< HEAD
-        print(f"Failed to initialize bot: {e}")
-
-@bot.event
-async def on_command_error(ctx, error):
-    """Handle traditional command errors"""
-    if isinstance(error, commands.CommandNotFound):
-        await ctx.send("Command not found! Use /help or !help to see available commands.")
-    elif isinstance(error, commands.MissingPermissions):
-        await ctx.send("You don't have permission to use this command!")
-    else:
-        print(f"Error: {error}")  # Log the error for debugging
-        await ctx.send(f"An error occurred: {str(error)}")
-=======
         logger.error(f"Failed to initialize bot:")
         logger.error(traceback.format_exc())
         raise e
@@ -183,7 +130,6 @@ async def on_command_error(ctx, error):
     except Exception as e:
         logger.error(f"Error in error handler: {str(e)}")
         logger.error(traceback.format_exc())
->>>>>>> f43f3bb (Applying some come that is confirmed to b working)
 
 @bot.tree.error
 async def on_app_command_error(interaction: discord.Interaction, error):
@@ -218,28 +164,7 @@ if __name__ == "__main__":
     token = os.getenv('DISCORD_TOKEN')
     if not token:
         raise ValueError("No Discord token found in .env file")
-<<<<<<< HEAD
-    bot.run(token)
-=======
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-    print("[DEBUG] Starting bot with enhanced logging...")
-<<<<<<< HEAD
-    bot.run(token)
-
-
-
-## Made by dsod
-## Discord: dsodd
->>>>>>> 84b6b34 (Some final fixes)
-=======
-    bot.run(token)
->>>>>>> 0dcaccf (Update)
-=======
-    logger.info("Starting bot with enhanced error handling...")
-=======
->>>>>>> 523edc9 (yes)
     try:
         bot.run(token)
     except discord.errors.LoginFailure:
@@ -247,4 +172,3 @@ if __name__ == "__main__":
     except Exception as e:
         logger.error(f"Fatal error: {str(e)}")
         logger.error(traceback.format_exc())
->>>>>>> f43f3bb (Applying some come that is confirmed to b working)

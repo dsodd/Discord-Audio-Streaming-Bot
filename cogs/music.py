@@ -3,12 +3,6 @@ from discord import app_commands
 from discord.ext import commands
 import asyncio
 import traceback
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-import random
-=======
->>>>>>> efedcce (Testing branch merge)
 import os
 from collections import deque
 import yt_dlp
@@ -663,44 +657,12 @@ class MusicControlButtons(discord.ui.View):
         await interaction.response.send_message(mode_messages[new_mode], ephemeral=True)
 
 
-<<<<<<< HEAD
->>>>>>> 0dcaccf (Update)
-
-=======
->>>>>>> f43f3bb (Applying some come that is confirmed to b working)
 class Music(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-<<<<<<< HEAD
-        self.queue_managers = {}  # Dict to store queue managers for each guild
-=======
         self.queue_managers = {}
         print("[DEBUG] Music cog initialized")
->>>>>>> 0dcaccf (Update)
 
-<<<<<<< HEAD
-        # Register slash commands
-        self.bot.tree.add_command(app_commands.Command(
-            name='play',
-            description='Play music from a URL or search query',
-            callback=self.play
-        ))
-        self.bot.tree.add_command(app_commands.Command(
-            name='queue',
-            description='Display the current queue',
-            callback=self.queue
-        ))
-        self.bot.tree.add_command(app_commands.Command(
-            name='pause',
-            description='Pause or resume the current song',
-            callback=self.pause
-        ))
-        self.bot.tree.add_command(app_commands.Command(
-            name='stop',
-            description='Stop playback and clear the queue',
-            callback=self.stop
-        ))
-=======
     def create_embed(self, title, description, color=None):
         if color is None:
             color = discord.Color.from_rgb(205, 111, 251)  # #cd6ffb
@@ -711,19 +673,7 @@ class Music(commands.Cog):
         )
         embed.set_footer(text="Discord Music Bot")
         return embed
->>>>>>> efedcce (Testing branch merge)
 
-    def get_queue_manager(self, guild_id):
-        if guild_id not in self.queue_managers:
-            self.queue_managers[guild_id] = QueueManager()
-        return self.queue_managers[guild_id]
-
-<<<<<<< HEAD
-    async def play(self, interaction: discord.Interaction, query: str):
-        """Play music from a given URL or search query"""
-        if not interaction.user.voice:
-            await interaction.response.send_message("You need to be in a voice channel!")
-=======
     @commands.command(name='play', aliases=['p'])
     async def play_command(self, ctx, *, query: str):
         """Play music from a URL or search query (prefix command version)"""
@@ -741,32 +691,6 @@ class Music(commands.Cog):
         """Unified implementation for play command with enhanced error handling"""
         is_interaction = isinstance(ctx_or_interaction, discord.Interaction)
 
-<<<<<<< HEAD
-        if is_interaction:
-            user = ctx_or_interaction.user
-            guild = ctx_or_interaction.guild
-            await ctx_or_interaction.response.defer()
-        else:
-            user = ctx_or_interaction.author
-            guild = ctx_or_interaction.guild
-
-        if not user.voice:
-            embed = self.create_embed("Error", "You need to be in a voice channel!", discord.Color.red())
-            if is_interaction:
-                await ctx_or_interaction.followup.send(embed=embed)
-            else:
-                await ctx_or_interaction.send(embed=embed)
->>>>>>> 0dcaccf (Update)
-            return
-
-        queue_manager = self.get_queue_manager(guild.id)
-
-        try:
-<<<<<<< HEAD
-            # Connect to voice channel if not already connected
-            if not interaction.guild.voice_client:
-=======
-=======
         try:
             if is_interaction:
                 user = ctx_or_interaction.user
@@ -781,53 +705,20 @@ class Music(commands.Cog):
 
             queue_manager = self.get_queue_manager(guild.id)
 
-<<<<<<< HEAD
->>>>>>> f43f3bb (Applying some come that is confirmed to b working)
-            # Handle voice channel connection
-            if not guild.voice_client:
->>>>>>> 0dcaccf (Update)
-=======
             # Handle voice channel connection with retry
             max_retries = 3
             retry_count = 0
             while retry_count < max_retries:
->>>>>>> efedcce (Testing branch merge)
                 try:
                     if not guild.voice_client:
                         await user.voice.channel.connect(timeout=20.0, self_deaf=True)
                     break
                 except Exception as e:
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-                    print(f"[ERROR] Failed to connect to voice channel: {str(e)}")
-                    await interaction.followup.send("Failed to connect to voice channel. Please try again.")
-                    return
-
-            # Process the query and get the source
-            print(f"[DEBUG] Processing query: {query}")
-            music_source = await MusicSource.create_source(query)
-            print(f"[DEBUG] Created music source for: {music_source.title}")
-=======
-                    print(f"[ERROR] Voice connection failed: {str(e)}")
-                    embed = self.create_embed("Connection Error", 
-                        "Failed to connect to voice channel. Please try again.", 
-                        discord.Color.red())
-                    if is_interaction:
-                        await ctx_or_interaction.followup.send(embed=embed)
-                    else:
-                        await ctx_or_interaction.send(embed=embed)
-=======
-                    await self.handle_voice_state_error(ctx_or_interaction, e)
->>>>>>> f43f3bb (Applying some come that is confirmed to b working)
-                    return
-=======
                     retry_count += 1
                     if retry_count >= max_retries:
                         await self.handle_voice_state_error(ctx_or_interaction, e)
                         return
                     await asyncio.sleep(1)
->>>>>>> efedcce (Testing branch merge)
 
             # Create music source with better error handling for playlists
             try:
@@ -836,76 +727,11 @@ class Music(commands.Cog):
                 print(f"[ERROR] Failed to create music source: {str(e)}")
                 await self.handle_music_source_error(ctx_or_interaction, e)
                 return
->>>>>>> 0dcaccf (Update)
 
-            # Add to queue
+            # Add first track to queue
             queue_manager.add(music_source)
-            await interaction.followup.send(f"Added to queue: {music_source.title}")
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-            # Start playing if not already playing
-            if not interaction.guild.voice_client.is_playing():
-                print("[DEBUG] Starting playback...")
-                await self.play_next(interaction)
-
-        except Exception as e:
-            error_msg = f"Error in play command:\n{str(e)}\n{traceback.format_exc()}"
-            print(f"[ERROR] {error_msg}")
-            await interaction.followup.send(f"An error occurred: {str(e)}")
-
-    async def play_next(self, interaction):
-        """Play the next song in the queue"""
-        queue_manager = self.get_queue_manager(interaction.guild_id)
-
-        if queue_manager.is_empty():
-            await interaction.followup.send("Queue is empty!")
-            return
-
-        try:
-            print("[DEBUG] Getting next song from queue...")
-            source = queue_manager.get_next()
-            print(f"[DEBUG] Getting audio source for: {source.title}")
-            audio_source = await source.get_audio()
-            print("[DEBUG] Audio source created successfully")
-
-            def after_playing(error):
-                if error:
-                    error_msg = f"Error after playing: {str(error)}\n{traceback.format_exc()}"
-                    print(f"[ERROR] {error_msg}")
-                    asyncio.run_coroutine_threadsafe(
-                        interaction.followup.send(f"An error occurred while playing: {error}"),
-                        self.bot.loop
-                    )
-                else:
-                    print("[DEBUG] Song finished playing, moving to next...")
-                    asyncio.run_coroutine_threadsafe(
-                        self.play_next(interaction), self.bot.loop
-                    )
-
-            print("[DEBUG] Starting playback...")
-            if interaction.guild.voice_client and interaction.guild.voice_client.is_connected():
-                interaction.guild.voice_client.play(audio_source, after=after_playing)
-                await interaction.followup.send(f"Now playing: {source.title}")
-            else:
-                print("[ERROR] Voice client disconnected before playback could start")
-                await interaction.followup.send("Lost connection to voice channel. Please try again.")
-
-        except Exception as e:
-            error_msg = f"Error in play_next:\n{str(e)}\n{traceback.format_exc()}"
-            print(f"[ERROR] {error_msg}")
-            await interaction.followup.send(f"An error occurred while playing the next song: {str(e)}")
-
-    async def queue(self, interaction: discord.Interaction):
-        """Display the current queue"""
-        queue_manager = self.get_queue_manager(interaction.guild_id)
-        if queue_manager.is_empty():
-            await interaction.response.send_message("Queue is empty!")
-=======
-            # Handle playlist/album tracks
-=======
             # Handle playlist/album tracks with chunking
->>>>>>> efedcce (Testing branch merge)
             remaining_tracks = getattr(music_source, 'remaining_tracks', None)
             if remaining_tracks:
                 successful_additions = 0
@@ -998,39 +824,8 @@ class Music(commands.Cog):
                 await ctx_or_interaction.response.send_message(embed=embed)
             else:
                 await ctx_or_interaction.send(embed=embed)
->>>>>>> 0dcaccf (Update)
             return
 
-<<<<<<< HEAD
-        queue_list = queue_manager.get_queue()
-        queue_text = "\n".join(
-            f"{i+1}. {song.title}" for i, song in enumerate(queue_list)
-        )
-<<<<<<< HEAD
-        await interaction.response.send_message(f"Current queue:\n{queue_text}")
-
-    async def pause(self, interaction: discord.Interaction):
-        """Pause or resume the current song"""
-        if not interaction.guild.voice_client:
-            await interaction.response.send_message("Not connected to a voice channel!")
-            return
-
-        if interaction.guild.voice_client.is_playing():
-            interaction.guild.voice_client.pause()
-            await interaction.response.send_message("Playback paused")
-        elif interaction.guild.voice_client.is_paused():
-            interaction.guild.voice_client.resume()
-            await interaction.response.send_message("Playback resumed")
-        else:
-            await interaction.response.send_message("Nothing is playing!")
-
-    async def stop(self, interaction: discord.Interaction):
-        """Stop playback and clear the queue"""
-        if not interaction.guild.voice_client:
-            await interaction.response.send_message("Not connected to a voice channel!")
-=======
-        embed = self.create_embed("Current Queue", queue_text)
-=======
         guild = ctx_or_interaction.guild
         if not guild.voice_client:
             embed = self.create_embed("Error", "Not connected to a voice channel!", discord.Color.red())
@@ -1052,7 +847,6 @@ class Music(commands.Cog):
         # Create view with music control buttons
         view = MusicControlButtons(self.bot)
 
->>>>>>> efedcce (Testing branch merge)
         if is_interaction:
             await ctx_or_interaction.response.send_message(embed=embed, view=view)
         else:
@@ -1160,24 +954,14 @@ class Music(commands.Cog):
                 await ctx_or_interaction.response.send_message(embed=embed)
             else:
                 await ctx_or_interaction.send(embed=embed)
->>>>>>> 0dcaccf (Update)
             return
 
         queue_manager = self.get_queue_manager(guild.id)
         queue_manager.clear()
-<<<<<<< HEAD
-<<<<<<< HEAD
-        interaction.guild.voice_client.stop()
-        await interaction.guild.voice_client.disconnect()
-        await interaction.response.send_message("Stopped playback and cleared queue")
-=======
-        guild.voice_client.stop()
-=======
 
         if guild.voice_client.is_playing():
             guild.voice_client.stop()
 
->>>>>>> efedcce (Testing branch merge)
         await guild.voice_client.disconnect()
 
         embed = self.create_embed("Stopped", "⏹️ Playback stopped and queue cleared!")
@@ -1378,7 +1162,6 @@ class Music(commands.Cog):
         if guild_id not in self.queue_managers:
             self.queue_managers[guild_id] = QueueManager()
         return self.queue_managers[guild_id]
->>>>>>> 0dcaccf (Update)
 
     async def handle_voice_state_error(self, ctx_or_interaction, error):
         """Handle voice state errors with better feedback"""
@@ -1553,4 +1336,6 @@ class Music(commands.Cog):
 
 
 async def setup(bot):
+    print("[DEBUG] Setting up Music cog...")
     await bot.add_cog(Music(bot))
+    print("[DEBUG] Music cog setup complete")
