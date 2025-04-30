@@ -1,4 +1,6 @@
+**/__pycache__/
 cogs/__pycache__/
 utils/__pycache__/
 spotify_cache/*
+logs/*
 .env
