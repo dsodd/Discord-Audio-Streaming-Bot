@@ -66,7 +66,7 @@ class SpotifyClient:
             raise
     def extract_spotify_id(self, url):
         """Extract Spotify ID from URL"""
-        url = url.split('?')[0]  # Remove query parameters
+        url = url.split('?')[0]
         pattern = r'(?:spotify\.com|open\.spotify\.com)/(?:track|playlist|album)/([a-zA-Z0-9]+)'
         match = re.search(pattern, url)
         if not match:
@@ -75,7 +75,7 @@ class SpotifyClient:
 
     def get_content_type(self, url):
         """Determine if URL is for track, playlist, or album"""
-        url = url.split('?')[0]  # Remove query parameters
+        url = url.split('?')[0]
         if 'track' in url:
             return 'track'
         elif 'playlist' in url:
@@ -126,7 +126,6 @@ class SpotifyClient:
                 print(f"[DEBUG] Found playlist: {playlist['name']}")
                 tracks = []
 
-                # Get all tracks using pagination
                 results = playlist['tracks']
                 track_count = 0
                 error_count = 0
@@ -141,12 +140,10 @@ class SpotifyClient:
 
                             track = item['track']
 
-                            # Skip local files and null tracks
                             if track.get('is_local', False) or not track.get('name'):
                                 print("[WARNING] Skipping local or invalid track")
                                 continue
 
-                            # Create a more precise YouTube search query
                             artists = [artist['name'] for artist in track['artists']]
                             artist_names = ', '.join(artists)
                             track_name = track['name']
@@ -208,7 +205,6 @@ class SpotifyClient:
                 track_count = 0
                 error_count = 0
 
-                # Get all tracks using pagination
                 results = album['tracks']
                 while results:
                     print(f"[DEBUG] Processing album page with {len(results['items'])} items")
@@ -218,10 +214,8 @@ class SpotifyClient:
                                 print("[WARNING] Skipping invalid or local track")
                                 continue
 
-                            # Get full track info for better metadata
                             full_track = self.sp.track(track['id'])
 
-                            # Create a more precise YouTube search query
                             artists = [artist['name'] for artist in full_track['artists']]
                             artist_names = ', '.join(artists)
                             track_name = full_track['name']
@@ -327,7 +321,6 @@ class MusicSource:
         }
 
         try:
-            # Check for FFmpeg before proceeding
             try:
                 print("[DEBUG] Checking FFmpeg installation...")
                 subprocess.run(['ffmpeg', '-version'], capture_output=True, text=True, timeout=5)
@@ -392,7 +385,7 @@ class MusicSource:
                         source.remaining_tracks = tracks[1:]
                         return source
 
-                    else:  # Single track
+                    else:
                         print(f"[DEBUG] Processing single track: {query}")
                         track_info = await spotify_client.get_track_info(query)
                         if not track_info or not track_info.get('search_query'):
@@ -431,14 +424,13 @@ class MusicSource:
                     'cookiefile': None,
                     'nocheckcertificate': True,
                     'age_limit': None,
-                    'socket_timeout': 30,  # Increased timeout
-                    'retries': 10,  # More retries for transient failures
+                    'socket_timeout': 30,
+                    'retries': 10, 
                 }
                 ydl_opts.update(cookie_opts)
 
                 print(f"[DEBUG] Extracting info with yt-dlp for: {query} (Attempt {current_retry + 1}/{max_retries})")
 
-                # Add delay between retries with exponential backoff
                 if current_retry > 0:
                     await asyncio.sleep(backoff_delay)
                     backoff_delay *= 2
@@ -459,7 +451,6 @@ class MusicSource:
                             for entry in info['entries']:
                                 try:
                                     if entry and entry.get('url'):
-                                        # Test URL availability with increased timeout
                                         test_response = requests.head(entry['url'], timeout=10)
                                         if test_response.status_code == 200:
                                             valid_entry = entry
@@ -543,7 +534,7 @@ class QueueManager:
     def __init__(self):
         self.queue = deque()
         self.current = None
-        self.loop_mode = "off"  # Can be "off", "song", or "queue"
+        self.loop_mode = "off"
 
     def add(self, item):
         """Add an item to the queue"""
@@ -552,16 +543,13 @@ class QueueManager:
     def get_next(self):
         """Get the next item from the queue"""
         if self.loop_mode == "song" and self.current:
-            # If song loop is enabled, keep playing the current song
             return self.current
         elif not self.is_empty():
             if self.loop_mode == "queue" and self.current:
-                # Add current song back to queue before getting next
                 self.queue.append(self.current)
             self.current = self.queue.popleft()
             return self.current
         else:
-            # Clear current song when no more songs in queue
             self.current = None
             return None
 
@@ -573,14 +561,12 @@ class QueueManager:
 
     def is_empty(self):
         """Check if the queue is empty"""
-        # Consider queue not empty if we're looping the current song
         return len(self.queue) == 0 and (self.current is None or self.loop_mode == "off")
 
     def get_queue(self):
         """Get the current queue as a list"""
         queue_list = list(self.queue)
         if self.current and self.loop_mode == "queue":
-            # Show current song at the end of queue when queue loop is enabled
             queue_list.append(self.current)
         return queue_list
 
@@ -590,11 +576,9 @@ class QueueManager:
             self.loop_mode = "song"
         elif self.loop_mode == "song":
             self.loop_mode = "queue"
-            # When switching to queue mode, add current song to queue
             if self.current:
                 self.queue.append(self.current)
         else:  # mode is "queue"
-            # When disabling loop, remove any duplicates of current song from queue
             if self.current:
                 self.queue = deque([song for song in self.queue if song != self.current])
             self.loop_mode = "off"
@@ -626,7 +610,7 @@ class QueueManager:
 
 class MusicControlButtons(discord.ui.View):
     def __init__(self, bot):
-        super().__init__(timeout=60)  # Buttons valid for 60 seconds
+        super().__init__(timeout=60) 
         self.bot = bot
 
     @discord.ui.button(label="⏭️ Skip", style=discord.ButtonStyle.secondary, custom_id="skip")

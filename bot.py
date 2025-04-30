@@ -6,11 +6,11 @@ from dotenv import load_dotenv
 =======
 import traceback
 import asyncio
-from logger_config import logger  # Import the shared logger configuration
+from logger_config import logger
 
-# Example logging
 logger.info("Bot script started.")
 
+<<<<<<< HEAD
 >>>>>>> f43f3bb (Applying some come that is confirmed to b working)
 
 # Load environment variables
@@ -20,22 +20,27 @@ load_dotenv()
 # Bot configuration with all required intents
 =======
 # Get application ID
+=======
+load_dotenv()
+
+>>>>>>> f27ae09 (Cleaned up some code)
 APPLICATION_ID = os.getenv('APPLICATION_ID')
 if not APPLICATION_ID:
     raise ValueError("No APPLICATION_ID found in .env file")
 
-# Add debug logging for token
 token = os.getenv('DISCORD_TOKEN')
 if token:
     logger.info("Discord token loaded successfully")
-    # Log a masked version of the token for verification (showing only first 10 chars)
     logger.info(f"Token starts with: {token[:10]}...")
 else:
     logger.error("No Discord token found in .env file")
     raise ValueError("No Discord token found in .env file")
 
+<<<<<<< HEAD
 # Bot configuration with all required intents and permissions
 >>>>>>> efedcce (Testing branch merge)
+=======
+>>>>>>> f27ae09 (Cleaned up some code)
 intents = discord.Intents.default()
 intents.message_content = True
 intents.voice_states = True
@@ -57,12 +62,11 @@ class MusicBot(commands.Bot):
             logger.error(traceback.format_exc())
             raise
 
-# Create bot instance with required permissions and multiple prefixes
 bot = MusicBot(
-    command_prefix=['!'],  # Support ! as the prefix (more can be added ['!', '?'], example)
+    command_prefix=['!'],  # support ! as the prefix (more can be added ['!', '?'], example)
     intents=intents,
     application_id=APPLICATION_ID,
-    help_command=None  # Disable default help command to use our custom one
+    help_command=None
 )
 >>>>>>> 0dcaccf (Update)
 
@@ -70,6 +74,7 @@ bot = MusicBot(
 async def on_ready():
     logger.info(f'Bot is ready! Logged in as {bot.user.name}')
     try:
+<<<<<<< HEAD
 <<<<<<< HEAD
         # Sync slash commands
         print("Syncing slash commands...")
@@ -81,11 +86,12 @@ async def on_ready():
         print("Music cog loaded successfully")
 =======
         # Log all registered commands before sync
+=======
+>>>>>>> f27ae09 (Cleaned up some code)
         logger.info("Currently registered commands:")
         for command in bot.tree.get_commands():
             logger.info(f"- /{command.name}")
 
-        # Generate bot invite link with proper permissions
         invite_link = discord.utils.oauth_url(
             APPLICATION_ID,
             permissions=discord.Permissions(
@@ -104,7 +110,6 @@ async def on_ready():
         logger.info(f"Invite the bot using this link to ensure proper permissions:")
         logger.info(invite_link)
 
-        # Sync slash commands globally with detailed logging
         logger.info("Starting global command sync...")
         try:
             existing_commands = await bot.tree.fetch_commands()
@@ -119,7 +124,7 @@ async def on_ready():
                 logger.warning("No commands were synced. This might indicate a registration issue.")
 
         except discord.errors.HTTPException as e:
-            if e.code == 429:  # Rate limit error
+            if e.code == 429: 
                 logger.warning("Rate limited while syncing commands. Waiting and retrying...")
                 await asyncio.sleep(10)
                 commands = await bot.tree.sync()
